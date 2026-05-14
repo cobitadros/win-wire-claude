@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Win Wire Generator — Powered by Claude</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f9f8f6;
+    --surface: #ffffff;
+    --border: rgba(0,0,0,0.1);
+    --border-strong: rgba(0,0,0,0.18);
+    --text: #1a1917;
+    --text-muted: #6b6a67;
+    --text-hint: #9e9c99;
+    --accent: #1D9E75;
+    --accent-light: rgba(29,158,117,0.1);
+    --purple-light: rgba(127,119,221,0.12);
+    --purple: #AFA9EC;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  body {
+    font-family: -apple-system, 'Helvetica Neue', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem 1.5rem;
+  }
+
+  .container { max-width: 860px; margin: 0 auto; }
+
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-mark {
+    width: 32px; height: 32px;
+    background: #0F1117;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .logo-mark svg { width: 18px; height: 18px; }
+
+  .logo-text { font-size: 15px; font-weight: 500; }
+  .logo-sub { font-size: 12px; color: var(--text-muted); }
+
+  .api-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .api-row label { font-size: 12px; color: var(--text-muted); }
+
+  .api-input {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    padding: 7px 12px;
+    border: 0.5px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    width: 260px;
+    color: var(--text);
+  }
+
+  .api-input:focus { outline: none; border-color: var(--accent); }
+
+  .card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  .card-label {
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+  }
+
+  textarea {
+    width: 100%;
+    height: 180px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    resize: vertical;
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    background: #fafafa;
+    color: var(--text);
+  }
+
+  textarea:focus { outline: none; border-color: var(--accent); }
+
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1.5rem;
+  }
+
+  .btn-primary {
+    background: #0F1117;
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 10px 22px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: opacity 0.15s;
+  }
+
+  .btn-primary:hover { opacity: 0.82; }
+  .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .btn-ghost {
+    background: transparent;
+    border: 0.5px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    padding: 10px 16px;
+    font-size: 13px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+
+  .btn-ghost:hover { background: var(--bg); }
+
+  .status {
+    display: none;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  .status.active { display: flex; }
+
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 1.1s ease-in-out infinite;
+  }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.25} }
+
+  .error {
+    display: none;
+    font-size: 13px;
+    color: #c0392b;
+    background: #fdf0ef;
+    border: 0.5px solid rgba(192,57,43,0.2);
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+  }
+
+  .error.visible { display: block; }
+
+  /* SLIDE */
+  .slide-wrap { display: none; }
+  .slide-wrap.visible { display: block; }
+
+  .slide {
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: #0D1117;
+    border-radius: var(--radius);
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    position: relative;
+  }
+
+  .slide-left {
+    padding: 36px 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border-right: 0.5px solid rgba(255,255,255,0.07);
+    position: relative;
+  }
+
+  .slide-accent-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #1D9E75 0%, #5DCAA5 60%, transparent 100%);
+  }
+
+  .slide-eyebrow {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #1D9E75;
+    margin-bottom: 10px;
+  }
+
+  .slide-company {
+    font-size: 32px;
+    font-weight: 600;
+    color: #ffffff;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    margin-bottom: 10px;
+  }
+
+  .slide-tagline {
+    font-size: 12px;
+    color: rgba(255,255,255,0.42);
+    line-height: 1.6;
+    max-width: 380px;
+  }
+
+  .slide-quote-block {
+    border-left: 2px solid #1D9E75;
+    padding-left: 14px;
+    margin-top: 18px;
+  }
+
+  .slide-quote {
+    font-size: 11.5px;
+    color: rgba(255,255,255,0.72);
+    line-height: 1.65;
+    font-style: italic;
+  }
+
+  .slide-quote-attr {
+    font-size: 9.5px;
+    color: rgba(255,255,255,0.35);
+    margin-top: 6px;
+  }
+
+  .slide-tags {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+
+  .tag {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    padding: 3px 8px;
+    border-radius: 3px;
+  }
+
+  .tag-won { background: rgba(29,158,117,0.15); color: #5DCAA5; }
+  .tag-industry { background: rgba(127,119,221,0.15); color: #AFA9EC; }
+  .tag-product { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.45); }
+
+  .slide-date {
+    font-size: 10px;
+    color: rgba(255,255,255,0.2);
+  }
+
+  .slide-right {
+    padding: 28px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .metric-card {
+    background: rgba(255,255,255,0.04);
+    border: 0.5px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+
+  .metric-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: rgba(255,255,255,0.3);
+    margin-bottom: 5px;
+  }
+
+  .metric-value {
+    font-size: 20px;
+    font-weight: 600;
+    color: #ffffff;
+    letter-spacing: -0.01em;
+  }
+
+  .metric-sub {
+    font-size: 10px;
+    color: rgba(255,255,255,0.35);
+    margin-top: 3px;
+  }
+
+  .outcomes-card {
+    flex: 1;
+    background: rgba(29,158,117,0.06);
+    border: 0.5px solid rgba(29,158,117,0.18);
+    border-radius: 8px;
+    padding: 14px 16px;
+    overflow: hidden;
+  }
+
+  .outcomes-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #5DCAA5;
+    margin-bottom: 10px;
+  }
+
+  .outcome-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    margin-bottom: 8px;
+    font-size: 10px;
+    color: rgba(255,255,255,0.62);
+    line-height: 1.45;
+  }
+
+  .outcome-dot {
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: #1D9E75;
+    margin-top: 4px;
+    flex-shrink: 0;
+  }
+
+  .comp-card {
+    background: rgba(127,119,221,0.07);
+    border: 0.5px solid rgba(127,119,221,0.18);
+    border-radius: 8px;
+    padding: 10px 14px;
+  }
+
+  .comp-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #AFA9EC;
+    margin-bottom: 4px;
+  }
+
+  .comp-value {
+    font-size: 11px;
+    color: rgba(255,255,255,0.55);
+  }
+
+  .post-controls {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .btn-small {
+    background: transparent;
+    border: 0.5px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    padding: 7px 14px;
+    font-size: 12px;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .btn-small:hover { background: var(--bg); }
+
+  .powered {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-hint);
+    margin-top: 2rem;
+  }
+
+  .powered span { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="top-bar">
+    <div class="logo">
+      <div class="logo-mark">
+        <svg viewBox="0 0 18 18" fill="none">
+          <rect x="2" y="2" width="6" height="6" rx="1.5" fill="#1D9E75"/>
+          <rect x="10" y="2" width="6" height="6" rx="1.5" fill="rgba(255,255,255,0.3)"/>
+          <rect x="2" y="10" width="6" height="6" rx="1.5" fill="rgba(255,255,255,0.3)"/>
+          <rect x="10" y="10" width="6" height="6" rx="1.5" fill="rgba(255,255,255,0.15)"/>
+        </svg>
+      </div>
+      <div>
+        <div class="logo-text">Win Wire Generator</div>
+        <div class="logo-sub">Powered by Claude</div>
+      </div>
+    </div>
+
+    <div class="api-row">
+      <label for="apiKey">Anthropic API Key</label>
+      <input class="api-input" type="password" id="apiKey" placeholder="sk-ant-..." autocomplete="off" />
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Deal Payload (JSON)</div>
+    <textarea id="payload" placeholder='Paste your JSON payload here — or click "Load sample" below'></textarea>
+  </div>
+
+  <div class="controls">
+    <button class="btn-primary" id="generateBtn" onclick="generate()">
+      ⚡ Generate Win Wire
+    </button>
+    <button class="btn-ghost" onclick="loadSample()">Load sample payload</button>
+    <div class="status" id="status">
+      <span class="dot"></span> Claude is generating...
+    </div>
+  </div>
+
+  <div class="error" id="errorMsg"></div>
+
+  <div class="slide-wrap" id="slideWrap">
+    <div class="slide" id="slide">
+      <div class="slide-left">
+        <div class="slide-accent-bar"></div>
+        <div>
+          <div class="slide-eyebrow">Customer Win</div>
+          <div class="slide-company" id="s-company">—</div>
+          <div class="slide-tagline" id="s-tagline"></div>
+          <div class="slide-quote-block" id="s-quote-block" style="display:none">
+            <div class="slide-quote" id="s-quote"></div>
+            <div class="slide-quote-attr" id="s-quote-attr"></div>
+          </div>
+        </div>
+        <div>
+          <div class="slide-tags" id="s-tags"></div>
+          <div class="slide-date" id="s-date"></div>
+        </div>
+      </div>
+      <div class="slide-right">
+        <div class="metric-card">
+          <div class="metric-label">ARR / Deal Value</div>
+          <div class="metric-value" id="s-arr">—</div>
+          <div class="metric-sub" id="s-seats"></div>
+        </div>
+        <div class="outcomes-card">
+          <div class="outcomes-label">Key Outcomes</div>
+          <div id="s-outcomes"></div>
+        </div>
+        <div class="comp-card" id="s-comp-block" style="display:none">
+          <div class="comp-label">Displaced</div>
+          <div class="comp-value" id="s-comp"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="post-controls">
+      <button class="btn-small" onclick="copyJSON()">📋 Copy structured JSON</button>
+      <button class="btn-small" onclick="printSlide()">🖨 Export / Print</button>
+    </div>
+  </div>
+
+  <div class="powered">Built with <span>Claude API</span> · claude-sonnet-4-20250514</div>
+
+</div>
+
+<script>
+const SAMPLE = {
+  "account_name": "Palo Alto Networks",
+  "industry": "Cybersecurity",
+  "region": "West",
+  "close_date": "2026-04-28",
+  "arr": "$142,000",
+  "seats": "320 users",
+  "products": ["Reference Program", "Story Engine", "AI Insights"],
+  "champion_name": "Sarah Chen",
+  "champion_title": "VP Customer Marketing",
+  "use_case": "Automate customer reference and advocacy program at scale — reduce manual story creation from 3 weeks to 2 days",
+  "business_outcomes": "Reduced story production time by 87%, unlocked 40 new reference accounts, integrated directly into Salesforce CPQ for seller-facing reference access",
+  "competitive_displacement": "Influitive, ReferenceEdge",
+  "customer_quote": "SlapFive turned our reference program from a bottleneck into a competitive weapon. We went from chasing customers for stories to having them in pipeline faster than our sellers can use them.",
+  "sales_rep": "Jordan Mills",
+  "opp_id": "OPP-2026-00441"
+};
+
+let lastStructured = null;
+
+function loadSample() {
+  document.getElementById('payload').value = JSON.stringify(SAMPLE, null, 2);
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+
+function clearError() {
+  const el = document.getElementById('errorMsg');
+  el.textContent = '';
+  el.classList.remove('visible');
+}
+
+async function generate() {
+  clearError();
+  const apiKey = document.getElementById('apiKey').value.trim();
+  const raw = document.getElementById('payload').value.trim();
+
+  if (!apiKey) { showError('Please enter your Anthropic API key above.'); return; }
+  if (!raw) { showError('Please paste a JSON payload or load the sample.'); return; }
+
+  let parsed;
+  try { parsed = JSON.parse(raw); }
+  catch(e) { showError('Invalid JSON — double-check your payload formatting.'); return; }
+
+  const btn = document.getElementById('generateBtn');
+  const status = document.getElementById('status');
+  btn.disabled = true;
+  status.classList.add('active');
+  document.getElementById('slideWrap').classList.remove('visible');
+
+  const prompt = `You are a win wire specialist at a B2B SaaS company. Given this raw deal payload, extract and refine the information into a clean, polished win wire. Return ONLY valid JSON — no markdown, no explanation, no code fences.
+
+Required JSON shape (all fields required, use empty string if unknown):
+{
+  "company": "account name",
+  "industry": "industry vertical (1-3 words)",
+  "tagline": "one crisp sentence — what problem did we solve, or what did they achieve (max 18 words)",
+  "arr": "formatted deal value e.g. $142,000",
+  "seats": "seat or user count e.g. 320 users, or empty string",
+  "outcomes": ["outcome 1 (punchy, max 12 words)", "outcome 2", "outcome 3"],
+  "quote": "verbatim or lightly refined customer quote, or empty string if none",
+  "quote_attr": "First Last, Title at Company — or empty string",
+  "displaced": "competitor(s) displaced, comma separated — or empty string",
+  "tags": ["industry tag", "product/use-case tag"],
+  "close_date": "Month YYYY format e.g. April 2026"
+}
+
+Deal payload:
+${JSON.stringify(parsed, null, 2)}`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error?.message || 'API error ' + res.status);
+    }
+
+    const data = await res.json();
+    const text = data.content.map(b => b.text || '').join('');
+    const clean = text.replace(/```json|```/g, '').trim();
+    const structured = JSON.parse(clean);
+    lastStructured = structured;
+    renderSlide(structured);
+
+  } catch(e) {
+    showError('Generation failed: ' + e.message);
+    console.error(e);
+  }
+
+  btn.disabled = false;
+  status.classList.remove('active');
+}
+
+function renderSlide(d) {
+  document.getElementById('s-company').textContent = d.company || '—';
+  document.getElementById('s-tagline').textContent = d.tagline || '';
+  document.getElementById('s-arr').textContent = d.arr || '—';
+  document.getElementById('s-seats').textContent = d.seats || '';
+  document.getElementById('s-date').textContent = d.close_date ? 'Closed ' + d.close_date : '';
+
+  const outEl = document.getElementById('s-outcomes');
+  outEl.innerHTML = '';
+  (d.outcomes || []).slice(0, 4).forEach(o => {
+    outEl.innerHTML += `<div class="outcome-item"><span class="outcome-dot"></span><span>${o}</span></div>`;
+  });
+
+  if (d.quote) {
+    document.getElementById('s-quote').textContent = '\u201C' + d.quote + '\u201D';
+    document.getElementById('s-quote-attr').textContent = d.quote_attr || '';
+    document.getElementById('s-quote-block').style.display = 'block';
+  } else {
+    document.getElementById('s-quote-block').style.display = 'none';
+  }
+
+  if (d.displaced) {
+    document.getElementById('s-comp').textContent = d.displaced;
+    document.getElementById('s-comp-block').style.display = 'block';
+  } else {
+    document.getElementById('s-comp-block').style.display = 'none';
+  }
+
+  const tagsEl = document.getElementById('s-tags');
+  tagsEl.innerHTML = '<span class="tag tag-won">Closed Won</span>';
+  (d.tags || []).forEach((t, i) => {
+    const cls = i === 0 ? 'tag-industry' : 'tag-product';
+    tagsEl.innerHTML += `<span class="tag ${cls}">${t}</span>`;
+  });
+
+  document.getElementById('slideWrap').classList.add('visible');
+}
+
+function copyJSON() {
+  if (!lastStructured) return;
+  navigator.clipboard.writeText(JSON.stringify(lastStructured, null, 2))
+    .then(() => alert('Structured JSON copied to clipboard!'));
+}
+
+function printSlide() {
+  const slide = document.getElementById('slide');
+  const win = window.open('', '_blank');
+  win.document.write(`
+    <!DOCTYPE html><html><head>
+    <style>
+      body { margin: 0; background: #0D1117; }
+      .slide { width: 100vw; height: 100vh; }
+    </style></head><body>
+    ${slide.outerHTML}
+    </body></html>
+  `);
+  win.document.close();
+  win.print();
+}
+
+document.getElementById('payload').addEventListener('keydown', function(e) {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') generate();
+});
+</script>
+</body>
+</html>
